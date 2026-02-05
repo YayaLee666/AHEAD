@@ -270,27 +270,6 @@ class AHEADGraphMixer(nn.Module):
         grads = torch.autograd.grad(outputs=losses_for_grad, inputs=updated_src_memory_grad, grad_outputs=torch.ones_like(losses_for_grad))[0]       
         grad_norms = torch.linalg.norm(grads, dim=1).detach().cpu().numpy()
 
-        # generated_src_memory = self.memory_generator.compute_node_temporal_embeddings(
-        #     node_ids=src_node_ids, node_interact_times=node_interact_times,
-        #     num_neighbors=num_neighbors, time_gap=time_gap
-        # )
-        # generated_src_memory_grad = generated_src_memory.detach().requires_grad_(True)
-        # updated_src_memory_grad = updated_src_memory.detach().requires_grad_(True)  # 也可以保留你原来的 clone()
-        # losses_for_grad = self._get_infonce_loss_for_pseudo_grads(
-        #     updated_src_memory_grad,
-        #     prev_src_memory.detach(),
-        #     generated_src_memory_grad,
-        # )
-        # grads = torch.autograd.grad(
-        #     outputs=losses_for_grad,
-        #     inputs=generated_src_memory_grad,   # 关键：inputs 必须与 loss 中使用的是同一个 tensor
-        #     grad_outputs=torch.ones_like(losses_for_grad),
-        #     retain_graph=False,
-        #     create_graph=False,
-        #     allow_unused=False
-        # )[0]
-        # grad_norms = torch.linalg.norm(grads, dim=1).detach().cpu().numpy()
-
         with torch.no_grad():
             residuals = self._get_infonce_loss_for_pseudo_grads(
                 updated_src_memory, prev_src_memory, generated_src_memory
