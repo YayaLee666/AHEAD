@@ -29,11 +29,11 @@ These following repositories represent the primary baseline models used in our e
 
 AHEAD is designed to be **model-agnostic**.  
 Although this repository currently includes only the GraphMixer-based version for clarity and reproducibility, the framework can be easily applied to other T-GNN backbones such as:
-- GraphMixer
-- DyGFormer
-- TPNet  
-- BandRank  
-- LSTEP  
+- GraphMixer - https://github.com/yule-BUAA/DyGLib
+- DyGFormer - https://github.com/yule-BUAA/DyGLib
+- TPNet  -  https://github.com/lxd99/TPNet
+- BandRank  - https://github.com/YayaLee666/BandRank
+- LSTEP  - https://github.com/kthrn22/L-STEP
 
 Code for additional backbones will be released after paper acceptance, along with full experimental scripts and configurations.
 
