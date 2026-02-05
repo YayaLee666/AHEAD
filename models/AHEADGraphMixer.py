@@ -298,9 +298,6 @@ class AHEADGraphMixer(nn.Module):
         w_grad = indicator_weights[0]
         w_residual = indicator_weights[1]
 
-        # norm_grad_tensor = torch.from_numpy(norm_grad).to(self.device)
-        # norm_residual_tensor = torch.from_numpy(norm_residual).to(self.device)
-
         norm_grad_tensor = torch.from_numpy(norm_grad).to(self.device).float()
         norm_residual_tensor = torch.from_numpy(norm_residual).to(self.device).float()
 
@@ -312,43 +309,6 @@ class AHEADGraphMixer(nn.Module):
 
         final_mask = pi.detach().cpu().numpy().astype(bool)
         self.memory_generator.grad_mask_dict = dict(zip(src_node_ids.tolist(), final_mask.tolist()))
-
-        # all_scores_last_epoch = self.indicator_cache.indicator_cache[:, 1]
-        # all_scores_last_epoch = all_scores_last_epoch[all_scores_last_epoch > 0]
-        # if len(all_scores_last_epoch) < 20:
-        #     score_min, score_max = np.min(last_residuals), np.max(last_residuals)
-        #     soft_labels_np = (last_residuals - score_min) / (score_max - score_min + 1e-8)
-        # else:
-        #     s_thr_beta = np.percentile(all_scores_last_epoch, 90)
-        #     soft_labels_np = np.clip(last_residuals / (s_thr_beta + 1e-8), a_min=None, a_max=1.0)
-        # soft_pseudo_labels = torch.from_numpy(soft_labels_np.astype(np.float32)).to(self.device)
-
-        # # ===== Soft pseudo-label generation based on learnable q_beta (Eq.11) =====
-        # q_beta = torch.exp(self.beta_logit)
-        # # convert residuals to tensor
-        # residual_tensor = torch.from_numpy(last_residuals.astype(np.float32)).to(self.device)
-        # soft_pseudo_labels = torch.clamp(residual_tensor / (q_beta + 1e-8), max=1.0)
-        # loss_thresh_vec = F.binary_cross_entropy_with_logits(phi, soft_pseudo_labels, reduction='none')
-        # loss_thresh = loss_thresh_vec.mean()
-        # prev_src_m, upd_src_m, gen_src_m, prev_dst_m, upd_dst_m, gen_dst_m, src_nodes, dst_nodes, times = \
-        #     self._compute_components(src_node_ids, dst_node_ids, node_interact_times, num_neighbors, time_gap)
-        
-        # if self.loss_type == 'infonce':
-        #     main_loss = self._compute_infonce_loss(prev_src_m, upd_src_m, gen_src_m)
-        # else:
-        #     raise NotImplementedError(f"Unknown '{self.loss_type}' ")
-  
-        # final_loss = main_loss + self.lambda_thresh_loss * loss_thresh
-        # self.memory.update_state(src_nodes, upd_src_m, times)
-        # self.memory.update_state(dst_nodes, upd_dst_m, times)
-        # return final_loss
-
-        # ==========================================================
-        # Amplified divergence loss (Eq.(11) & Eq.(amp))  -- paper-matched
-        #   q_beta : batch β-quantile of current L_main per-sample loss
-        #   p_i(t) = min(1, L_main(v_i,t) / (q_beta + eps))
-        #   L_amp  = BCE( phi_i(t), p_i(t) )   where phi in (0,1)
-        # ==========================================================
         prev_src_m, upd_src_m, gen_src_m, prev_dst_m, upd_dst_m, gen_dst_m, src_nodes, dst_nodes, times = \
             self._compute_components(src_node_ids, dst_node_ids, node_interact_times, num_neighbors, time_gap)
         L_main_vec = self._compute_infonce_loss_per_sample(prev_src_m, upd_src_m, gen_src_m)  # [B], torch.Tensor
@@ -385,7 +345,6 @@ class AHEADGraphMixer(nn.Module):
             degrees = np.asarray(degrees)
             low_mask = torch.from_numpy(degrees < self.degree_calib_k).to(self.device)
 
-        # --- case 1: scores is torch.Tensor ---
         if isinstance(scores, torch.Tensor):
             # keep dtype/device; avoid in-place on shared tensor
             out = scores.clone()
@@ -393,7 +352,6 @@ class AHEADGraphMixer(nn.Module):
                 out[low_mask] = out[low_mask] * float(self.degree_calib_scale)
             return out
 
-        # --- case 2: scores is np.ndarray ---
         scores = np.asarray(scores, dtype=np.float32).copy()
         low_np = low_mask.detach().cpu().numpy().astype(bool)
         if np.any(low_np):
