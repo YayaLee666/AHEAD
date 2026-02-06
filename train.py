@@ -71,20 +71,14 @@ if __name__ == "__main__":
     node_raw_features, edge_raw_features, full_data, train_data, val_data, test_data = \
         get_node_classification_data(dataset_name=args.dataset_name, val_ratio=args.val_ratio, test_ratio=args.test_ratio)
 
-    # >>>>>>>>>> 在断言检查 <<<<<<<<<<
     assert len(train_data.src_node_ids) == len(train_data.labels), \
         f"Length mismatch in train_data! src_node_ids has {len(train_data.src_node_ids)} samples, " \
         f"but labels has {len(train_data.labels)} samples."
 
     assert len(val_data.src_node_ids) == len(val_data.labels), "Length mismatch in val_data!"
     assert len(test_data.src_node_ids) == len(test_data.labels), "Length mismatch in test_data!"
-    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-
 
     num_nodes = node_raw_features.shape[0]
-
-
 
     # --- Neighbor Sampler & Data Loader Initialization ---
     full_neighbor_sampler = get_neighbor_sampler(data=full_data, sample_neighbor_strategy=args.sample_neighbor_strategy, time_scaling_factor=args.time_scaling_factor, seed=1)
@@ -209,9 +203,6 @@ if __name__ == "__main__":
             if hasattr(model, "memory") and hasattr(model.memory, "reset_memory"):
                 model.memory.reset_memory()
 
-                # -------------------------
-                # (1.1) Memory Warm-up
-                # -------------------------
             logger.info("Warming up memory before indicator collection...")
             for train_data_indices in tqdm(train_idx_data_loader, ncols=120, desc="Memory Warm-up"):
                     # IMPORTANT: if your loader returns torch.Tensor indices
@@ -227,12 +218,10 @@ if __name__ == "__main__":
                     call_kwargs["time_gap"] = args.time_gap
                     model.compute_anomaly_score(batch_src, batch_dst, batch_ts, batch_eid, **call_kwargs)
 
-             # --- [CRITICAL] After warm-up, go back to CLEAN state for indicator collection ---
+
             if hasattr(model, "memory") and hasattr(model.memory, "reset_memory"):
                 model.memory.reset_memory()
-                # -------------------------
-                # (1.2) Indicator Collection
-                # -------------------------
+
             epoch_normal_grad_norms, epoch_abnormal_grad_norms = [], []
             indicator_loader_tqdm = tqdm(train_idx_data_loader, ncols=120, desc=f"Epoch {epoch + 1} [Indicator Collection]")
 
@@ -259,7 +248,6 @@ if __name__ == "__main__":
                 if np.any(is_abnormal_mask):
                      epoch_abnormal_grad_norms.extend(grad_norms[is_abnormal_mask])
 
-            # (1.3) Update global cache/mask
             model.indicator_cache.update_global_cache()
 
             # ============================================================
@@ -335,10 +323,7 @@ if __name__ == "__main__":
             # --- Validation Phase ---
             # state_after_train = copy.deepcopy(model.state_dict())
             state_after_train = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
-
-            # 验证
-            backup = None #
-
+            backup = None 
             logger.info(f"--- Performing validation for epoch {epoch + 1} ---")
             eval_kwargs = {}
             val_metrics, val_predicts, val_labels = evaluate_unsupervised_model_node_classification(model, full_neighbor_sampler, val_idx_data_loader, val_data, **eval_kwargs)
@@ -352,12 +337,8 @@ if __name__ == "__main__":
 
             if (epoch + 1) % args.test_interval_epochs == 0:
                 logger.info(f"--- Performing periodic test at epoch {epoch + 1} ---")
-
-                # 1) 确保权重回到训练结束时（避免 eval 改动权重的任何可能性）
                 model.load_state_dict(state_after_train, strict=True)
                 model = model.to(args.device)
-
-                # 3) 运行测试（注意：这里建议用 full_neighbor_sampler，而不是 train_neighbor_sampler）
                 test_eval_kwargs = {}
                 test_metrics, test_predicts, test_labels = evaluate_unsupervised_model_node_classification(
                     model=model,
@@ -366,8 +347,6 @@ if __name__ == "__main__":
                     evaluate_data=test_data,
                     **test_eval_kwargs
                 )
-
-                # 5) 再次确保权重回到训练结束（双保险）
                 model.load_state_dict(state_after_train, strict=True)
                 model = model.to(args.device)
 
@@ -400,7 +379,6 @@ if __name__ == "__main__":
                     early_stopping.save_checkpoint(model, is_best_test=True)
 
 
-
             # --- Early Stopping Check ---
             val_metric_indicator = [('AUROC', val_metrics['AUROC'], True)]
             early_stop = early_stopping.step(val_metric_indicator, model)
@@ -410,13 +388,10 @@ if __name__ == "__main__":
 
         if os.path.exists(best_model_path):
             logger.info(f"Loading best model from {best_model_path} for final testing and analysis...")
-            # 加载在验证集上性能最佳的模型权重
             model.load_state_dict(torch.load(best_model_path))
         else:
             logger.warning(f"Could not find best model checkpoint at {best_model_path}. "
                            "Final testing and analysis will use the model from the last epoch.")
-
-
 
         if best_test_metrics is not None:
             logger.info(f"The best test performance was at epoch {best_test_epoch}.")
