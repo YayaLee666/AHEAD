@@ -27,8 +27,7 @@ These following repositories represent the primary baseline models used in our e
 
 ## Extensibility
 
-AHEAD is designed to be **model-agnostic**.  
-Although this repository currently includes only the GraphMixer-based version for clarity and reproducibility, the framework can be easily applied to other T-GNN backbones such as:
+AHEAD is designed to be **model-agnostic**. The framework can be easily applied to other T-GNN backbones such as:
 - GraphMixer - https://github.com/yule-BUAA/DyGLib
 - DyGFormer - https://github.com/yule-BUAA/DyGLib
 - TPNet  -  https://github.com/lxd99/TPNet
